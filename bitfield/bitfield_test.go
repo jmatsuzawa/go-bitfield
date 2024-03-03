@@ -44,6 +44,7 @@ func TestUnmarshalPlainStructUint32(t *testing.T) {
 
 func TestUnmarshalError(t *testing.T) {
 	var integer int
+	var nilPointer *struct{} = nil
 	testCases := map[string]struct {
 		argData []byte
 		argV    any
@@ -51,6 +52,7 @@ func TestUnmarshalError(t *testing.T) {
 		"Nil provided":                   {[]byte{0x00}, nil},
 		"Non-pointer provided":           {[]byte{0x00}, integer},
 		"Pointer to non-struct provided": {[]byte{0x00}, &integer},
+		"Nil pointer provided":           {[]byte{0x00}, nilPointer},
 	}
 
 	for name, tc := range testCases {
