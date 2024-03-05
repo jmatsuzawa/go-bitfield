@@ -112,6 +112,56 @@ func TestUnmarshalSignedInt(t *testing.T) {
 	}
 }
 
+func TestUnmarshalCompositeOfBitFieldsAndNonNormalInteger(t *testing.T) {
+	// Setup
+	var v struct {
+		BitA    uint8 `bit:"6"`
+		BitB    uint8 `bit:"2"`
+		Int8C   int8
+		BitD    int16 `bit:"10"`
+		BitE    int8  `bit:"6"`
+		Uint32F uint32
+		Uint8G  uint8
+		BitH    uint8 `bit:"5"`
+		BitI    uint8 `bit:"3"`
+	}
+
+	// Exercise
+	err := Unmarshal([]byte{0b10100101, 0x5A, 0xB6, 0x6B, 0x5A, 0xA5, 0x55, 0xAA, 0xF0, 0b10101010}, &v)
+
+	// Verify
+	if err != nil {
+		t.Fatalf("Unmarshal() = %v; want nil", err)
+	}
+	if v.BitA != 0b100101 {
+		t.Fatalf("Unmarshal() -> v.BitA = %#b; want 0b100101", v.BitA)
+	}
+	if v.BitB != 0b10 {
+		t.Fatalf("Unmarshal() -> v.BitB = %#b; want 0b10", v.BitB)
+	}
+	if v.Int8C != 0x5A {
+		t.Fatalf("Unmarshal() -> v.Int8C = %#x; want -3", v.Int8C)
+	}
+	if v.BitD != -74 {
+		t.Fatalf("Unmarshal() -> v.BitD = %d (%#x); want -74", v.BitD, v.BitD)
+	}
+	if v.BitE != 0b011010 {
+		t.Fatalf("Unmarshal() -> v.BitE = %#b; want 0b011010", v.BitE)
+	}
+	if v.Uint32F != 0xAA55A55A {
+		t.Fatalf("Unmarshal() -> v.Uint32F = %#x; want 0xaa55a55a", v.Uint32F)
+	}
+	if v.Uint8G != 0xf0 {
+		t.Fatalf("Unmarshal() -> v.Uint8G = %#x; want 0xf0", v.Uint8G)
+	}
+	if v.BitH != 0b01010 {
+		t.Fatalf("Unmarshal() -> v.BitH = %#b; want 0b10101", v.BitH)
+	}
+	if v.BitI != 0b101 {
+		t.Fatalf("Unmarshal() -> v.BitI = %#b; want 0b101", v.BitI)
+	}
+}
+
 func TestUnmarshalError(t *testing.T) {
 	var integer int
 	var nilPointer *struct{} = nil

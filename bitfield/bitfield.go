@@ -43,10 +43,14 @@ func Unmarshal(data []byte, v any) error {
 		} else {
 			if tf.Type.Kind() == reflect.Uint8 {
 				vf.SetUint(uint64(data[iData]))
-			}
-			if tf.Type.Kind() == reflect.Uint32 {
+				iData++
+			} else if tf.Type.Kind() == reflect.Uint32 {
 				v := uint32(data[iData+3])<<24 | uint32(data[iData+2])<<16 | uint32(data[iData+1])<<8 | uint32(data[iData])
 				vf.SetUint(uint64(v))
+				iData += 4
+			} else if tf.Type.Kind() == reflect.Int8 {
+				vf.SetInt(int64(int8(data[iData])))
+				iData++
 			}
 		}
 	}
