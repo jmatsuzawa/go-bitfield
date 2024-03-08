@@ -20,7 +20,17 @@ func Unmarshal(data []byte, v any) error {
 		tf := rt.Field(iField)
 		vf := rv.Elem().Field(iField)
 		if tag, ok := tf.Tag.Lookup("bit"); ok {
-			bitLen, _ := strconv.Atoi(tag)
+			bitLen, err := strconv.Atoi(tag)
+			if err != nil {
+				return err
+			}
+			if bitLen <= 0 {
+				return errors.New("bit length must be greater than 0")
+			}
+			if bitLen > tf.Type.Bits() {
+				return errors.New("bit length must be less than or equal to the type size")
+			}
+
 			var val uint64
 
 			i := 0
