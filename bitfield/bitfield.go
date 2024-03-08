@@ -6,11 +6,30 @@ import (
 	"strconv"
 )
 
+// An InvalidUnmarshalError describes an invalid argument passed to [Unmarshal].
+// (The argument to [Unmarshal] must be a non-nil pointer to a struct.)
+type InvalidUnmarshalError struct {
+	Type reflect.Type
+}
+
+func (e *InvalidUnmarshalError) Error() string {
+	if e.Type == nil {
+		return "go-bitfield: Unmarshal(nil)"
+	}
+	if e.Type.Kind() != reflect.Pointer {
+		return "go-bitfield: Unmarshal(non-pointer " + e.Type.String() + ")"
+	}
+	if e.Type.Elem().Kind() != reflect.Struct {
+		return "go-bitfield: Unmarshal(pointer to non-struct " + e.Type.String() + ")"
+	}
+	return "go-bitfield: Unmarshal(nil " + e.Type.String() + ")"
+}
+
 func Unmarshal(data []byte, v any) error {
 	rv := reflect.ValueOf(v)
 	// Note: reflect.ValueOf(nil).Kind() == reflect.Invalid
 	if rv.Kind() != reflect.Ptr || rv.IsNil() || rv.Elem().Kind() != reflect.Struct {
-		return errors.New("v must be a non-nil pointer to a struct")
+		return &InvalidUnmarshalError{reflect.TypeOf(v)}
 	}
 
 	iData := 0

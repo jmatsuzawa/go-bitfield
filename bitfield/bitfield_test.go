@@ -222,6 +222,11 @@ func TestUnmarshalError(t *testing.T) {
 			if err == nil {
 				t.Errorf("Unmarshal() = %v; want error", err)
 			}
+			switch err := err.(type) {
+			case *InvalidUnmarshalError:
+			default:
+				t.Errorf("Unmarshal() = %s; want InvalidUnmarshalError", err)
+			}
 		})
 	}
 }
