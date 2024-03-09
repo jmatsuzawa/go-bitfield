@@ -26,12 +26,11 @@ func (e *InvalidUnmarshalError) Error() string {
 }
 
 func Unmarshal(data []byte, v any) error {
-	rv := reflect.ValueOf(v)
-	// Note: reflect.ValueOf(nil).Kind() == reflect.Invalid
-	if rv.Kind() != reflect.Ptr || rv.IsNil() || rv.Elem().Kind() != reflect.Struct {
-		return &InvalidUnmarshalError{reflect.TypeOf(v)}
+	if err := validateUnmarshalType(v); err != nil {
+		return err
 	}
 
+	rv := reflect.ValueOf(v)
 	iData := 0
 	iBitInData := 0
 	rt := reflect.TypeOf(v).Elem()
@@ -39,17 +38,8 @@ func Unmarshal(data []byte, v any) error {
 		tf := rt.Field(iField)
 		vf := rv.Elem().Field(iField)
 		if tag, ok := tf.Tag.Lookup("bit"); ok {
-			bitLen, err := strconv.Atoi(tag)
-			if err != nil {
-				return err
-			}
-			if bitLen <= 0 {
-				return errors.New("bit length must be greater than 0")
-			}
-			if bitLen > tf.Type.Bits() {
-				return errors.New("bit length must be less than or equal to the type size")
-			}
-
+			// Already checked error
+			bitLen, _ := strconv.Atoi(tag)
 			var val uint64
 
 			i := 0
@@ -85,6 +75,41 @@ func Unmarshal(data []byte, v any) error {
 	}
 
 	return nil
+}
+
+func isNonNilPointerToStruct(v any) bool {
+	rv := reflect.ValueOf(v)
+	return rv.Kind() == reflect.Pointer && !rv.IsNil() && rv.Elem().Kind() == reflect.Struct
+}
+
+func validateStruct(v any) error {
+	rt := reflect.TypeOf(v).Elem()
+	for iField := 0; iField < rt.NumField(); iField++ {
+		tf := rt.Field(iField)
+		tag, ok := tf.Tag.Lookup("bit")
+		if !ok {
+			continue
+		}
+
+		bitLen, err := strconv.Atoi(tag)
+		if err != nil {
+			return err
+		}
+		if bitLen <= 0 {
+			return errors.New("bit length must be greater than 0")
+		}
+		if bitLen > tf.Type.Bits() {
+			return errors.New("bit length must be less than or equal to the type size")
+		}
+	}
+	return nil
+}
+
+func validateUnmarshalType(v any) error {
+	if !isNonNilPointerToStruct(v) {
+		return &InvalidUnmarshalError{reflect.TypeOf(v)}
+	}
+	return validateStruct(v)
 }
 
 /**
