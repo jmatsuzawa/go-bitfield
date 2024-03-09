@@ -94,8 +94,8 @@ func isInteger(field reflect.StructField) bool {
 
 func validateStruct(v any) error {
 	rt := reflect.TypeOf(v).Elem()
-	for iField := 0; iField < rt.NumField(); iField++ {
-		field := rt.Field(iField)
+	for i := 0; i < rt.NumField(); i++ {
+		field := rt.Field(i)
 		tag, ok := field.Tag.Lookup("bit")
 		if !ok {
 			continue
