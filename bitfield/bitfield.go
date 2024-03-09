@@ -40,13 +40,13 @@ func Unmarshal(data []byte, v any) error {
 		vf := rv.Elem().Field(iField)
 		if tag, ok := tf.Tag.Lookup("bit"); ok {
 			// Already checked error
-			bitLen, _ := strconv.Atoi(tag)
+			bitSize, _ := strconv.Atoi(tag)
 			var val uint64
 
 			i := 0
-			for i < bitLen && iData < len(data) {
+			for i < bitSize && iData < len(data) {
 				d := uint64(data[iData])
-				for ; iBitInData < 8 && i < bitLen; iBitInData, i = iBitInData+1, i+1 {
+				for ; iBitInData < 8 && i < bitSize; iBitInData, i = iBitInData+1, i+1 {
 					val |= (((d >> iBitInData) & 1) << i)
 				}
 				if iBitInData >= 8 {
@@ -58,7 +58,7 @@ func Unmarshal(data []byte, v any) error {
 			if vf.CanUint() {
 				vf.SetUint(val)
 			} else if vf.CanInt() {
-				vf.SetInt(signed(val, bitLen))
+				vf.SetInt(signed(val, bitSize))
 			}
 		} else if isInteger(tf) {
 			switch tf.Type.Kind() {
@@ -110,17 +110,17 @@ func validateStruct(v any) error {
 			continue
 		}
 
-		bitLen, err := strconv.Atoi(tag)
+		bitSize, err := strconv.Atoi(tag)
 		if err != nil {
 			return err
 		}
 		if !isInteger(field) {
 			return errors.New("bit field must be an integer type")
 		}
-		if bitLen <= 0 {
+		if bitSize <= 0 {
 			return errors.New("bit length must be greater than 0")
 		}
-		if bitLen > field.Type.Bits() {
+		if bitSize > field.Type.Bits() {
 			return errors.New("bit length must be less than or equal to the type size")
 		}
 	}
@@ -136,10 +136,10 @@ func validateUnmarshalType(v any) error {
 
 /**
  * Convert an unsigned integer with a specific bit length to a signed integer
- * For example, signed(val = 0b00101101, bitLen = 6) returns 0b11101101
+ * For example, signed(val = 0b00101101, bitSize = 6) returns 0b11101101
  */
-func signed(val uint64, bitLen int) int64 {
-	msb := val >> (bitLen - 1)
-	pattern := (0 - msb) << bitLen
+func signed(val uint64, bitSize int) int64 {
+	msb := val >> (bitSize - 1)
+	pattern := (0 - msb) << bitSize
 	return int64(val | pattern)
 }
