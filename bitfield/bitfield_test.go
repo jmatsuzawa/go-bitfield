@@ -179,6 +179,9 @@ func TestUnmarshalBitSizeLimitError(t *testing.T) {
 	var sizeNonNumber struct {
 		A uint8 `bit:"x"`
 	}
+	var nonIntField struct {
+		A struct{} `bit:"1"`
+	}
 
 	testCases := map[string]struct {
 		argData []byte
@@ -189,6 +192,7 @@ func TestUnmarshalBitSizeLimitError(t *testing.T) {
 		"size less than zero": {[]byte{0x00}, &sizeLessThanZero},
 		"over type size":      {[]byte{0x00}, &overTypeSize},
 		"size non-number":     {[]byte{0x00}, &sizeNonNumber},
+		"non-int field":       {[]byte{0x00}, &nonIntField},
 	}
 
 	for name, tc := range testCases {

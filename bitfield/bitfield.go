@@ -82,11 +82,21 @@ func isNonNilPointerToStruct(v any) bool {
 	return rv.Kind() == reflect.Pointer && !rv.IsNil() && rv.Elem().Kind() == reflect.Struct
 }
 
+func isInteger(field reflect.StructField) bool {
+	switch field.Type.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return true
+	default:
+		return false
+	}
+}
+
 func validateStruct(v any) error {
 	rt := reflect.TypeOf(v).Elem()
 	for iField := 0; iField < rt.NumField(); iField++ {
-		tf := rt.Field(iField)
-		tag, ok := tf.Tag.Lookup("bit")
+		field := rt.Field(iField)
+		tag, ok := field.Tag.Lookup("bit")
 		if !ok {
 			continue
 		}
@@ -95,10 +105,13 @@ func validateStruct(v any) error {
 		if err != nil {
 			return err
 		}
+		if !isInteger(field) {
+			return errors.New("bit field must be an integer type")
+		}
 		if bitLen <= 0 {
 			return errors.New("bit length must be greater than 0")
 		}
-		if bitLen > tf.Type.Bits() {
+		if bitLen > field.Type.Bits() {
 			return errors.New("bit length must be less than or equal to the type size")
 		}
 	}
