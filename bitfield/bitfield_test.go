@@ -112,6 +112,63 @@ func TestUnmarshalSignedInt(t *testing.T) {
 	}
 }
 
+func TestUnmarshalPlainInteger(t *testing.T) {
+	// Setup
+	var v struct {
+		Uint8  uint8
+		Uint16 uint16
+		Uint32 uint32
+		Uint64 uint64
+		Int8   int8
+		Int16  int16
+		Int32  int32
+		Int64  int64
+	}
+
+	// Exercise
+	err := Unmarshal([]byte{
+		0x01,
+		0x23, 0x45,
+		0x67, 0x89, 0xAB, 0xCD,
+		0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD,
+		0x01,
+		0x23, 0x45,
+		0x67, 0x89, 0xAB, 0xCD,
+		0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD,
+	}, &v)
+
+	if err != nil {
+		t.Fatalf("Unmarshal() = %v; want nil", err)
+	}
+
+	if v.Uint8 != 0x01 {
+		t.Errorf("Unmarshal() -> v.Uint8 = %#x; want 0x01", v.Uint8)
+	}
+	if v.Uint16 != 0x4523 {
+		t.Errorf("Unmarshal() -> v.Uint16 = %#x; want 0x4523", v.Uint16)
+	}
+	if v.Uint32 != 0xCDAB8967 {
+		t.Errorf("Unmarshal() -> v.Uint32 = %#x; want 0xCDAB8967", v.Uint32)
+	}
+	if v.Uint64 != 0xCDAB8967452301EF {
+		t.Errorf("Unmarshal() -> v.Uint64 = %#x; want 0xCDAB8967452301EF", v.Uint64)
+	}
+	if v.Int8 != int8(0x01) {
+		t.Errorf("Unmarshal() -> uint8(v.Int8) = %#x; want 0x01", v.Int8)
+	}
+	if v.Int16 != int16(0x4523) {
+		t.Errorf("Unmarshal() -> uint16(v.Int16) = %#x; want 0x4523", v.Int16)
+	}
+	// if uint32(v.Int32) != 0xCDAB8967 {
+	if v.Int32 != -844_396_185 { // 0xCDAB8967
+		t.Errorf("Unmarshal() -> uint32(v.Int32) = %#x; want 0xCDAB8967", v.Int32)
+	}
+	// if uint64(v.Int64) != 0xCDAB8967452301EF {
+	if v.Int64 != -3_626_653_998_282_243_601 { // 0xCDAB8967452301EF
+		t.Errorf("Unmarshal() -> uint64(v.Int64) = %#x; want 0xCDAB8967452301EF", v.Int64)
+	}
+}
+
 func TestUnmarshalCompositeOfBitFieldsAndNonNormalInteger(t *testing.T) {
 	// Setup
 	var v struct {

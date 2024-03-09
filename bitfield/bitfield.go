@@ -1,6 +1,7 @@
 package bitfield
 
 import (
+	"encoding/binary"
 	"errors"
 	"reflect"
 	"strconv"
@@ -59,18 +60,26 @@ func Unmarshal(data []byte, v any) error {
 			} else if vf.CanInt() {
 				vf.SetInt(signed(val, bitLen))
 			}
-		} else {
-			if tf.Type.Kind() == reflect.Uint8 {
+		} else if isInteger(tf) {
+			switch tf.Type.Kind() {
+			case reflect.Uint8:
 				vf.SetUint(uint64(data[iData]))
-				iData++
-			} else if tf.Type.Kind() == reflect.Uint32 {
-				v := uint32(data[iData+3])<<24 | uint32(data[iData+2])<<16 | uint32(data[iData+1])<<8 | uint32(data[iData])
-				vf.SetUint(uint64(v))
-				iData += 4
-			} else if tf.Type.Kind() == reflect.Int8 {
+			case reflect.Uint16:
+				vf.SetUint(uint64(binary.LittleEndian.Uint16(data[iData:])))
+			case reflect.Uint32:
+				vf.SetUint(uint64(binary.LittleEndian.Uint32(data[iData:])))
+			case reflect.Uint64:
+				vf.SetUint(binary.LittleEndian.Uint64(data[iData:]))
+			case reflect.Int8:
 				vf.SetInt(int64(int8(data[iData])))
-				iData++
+			case reflect.Int16:
+				vf.SetInt(int64(int16(binary.LittleEndian.Uint16(data[iData:]))))
+			case reflect.Int32:
+				vf.SetInt(int64(int32(binary.LittleEndian.Uint32(data[iData:]))))
+			case reflect.Int64:
+				vf.SetInt(int64(binary.LittleEndian.Uint64(data[iData:])))
 			}
+			iData += int(tf.Type.Size())
 		}
 	}
 
