@@ -93,8 +93,8 @@ func isNonNilPointerToStruct(v any) bool {
 
 func isInteger(field reflect.StructField) bool {
 	switch field.Type.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return true
 	default:
 		return false
