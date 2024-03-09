@@ -162,18 +162,11 @@ func TestUnmarshalCompositeOfBitFieldsAndNonNormalInteger(t *testing.T) {
 	}
 }
 
-func TestUnmarshalNumError(t *testing.T) {
-	var v struct {
-		BitA uint8 `bit:"x"`
-	}
-
-	err := Unmarshal([]byte{0x00}, &v)
-	if err == nil {
-		t.Errorf("Unmarshal() = %v; want error", err)
-	}
-}
-
 func TestUnmarshalBitSizeLimitError(t *testing.T) {
+	// Setup
+	var sizeEmpty struct {
+		A uint8 `bit:""`
+	}
 	var sizeZero struct {
 		A uint8 `bit:"0"`
 	}
@@ -183,19 +176,26 @@ func TestUnmarshalBitSizeLimitError(t *testing.T) {
 	var overTypeSize struct {
 		A uint8 `bit:"9"`
 	}
+	var sizeNonNumber struct {
+		A uint8 `bit:"x"`
+	}
 
 	testCases := map[string]struct {
 		argData []byte
 		argV    any
 	}{
+		"size empty":          {[]byte{0x00}, &sizeEmpty},
 		"size zero":           {[]byte{0x00}, &sizeZero},
 		"size less than zero": {[]byte{0x00}, &sizeLessThanZero},
 		"over type size":      {[]byte{0x00}, &overTypeSize},
+		"size non-number":     {[]byte{0x00}, &sizeNonNumber},
 	}
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
+			// Exercise
 			err := Unmarshal(tc.argData, tc.argV)
+			// Verify
 			if err == nil {
 				t.Errorf("Unmarshal() = %v; want error", err)
 			}
