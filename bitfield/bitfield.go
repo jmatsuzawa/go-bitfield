@@ -95,7 +95,7 @@ func Unmarshal(data []byte, v any, opts ...Option) error {
 			} else if vf.CanInt() {
 				vf.SetInt(signed(val, bitSize))
 			}
-		} else if isInteger(tf) {
+		} else if isInteger(tf.Type.Kind()) {
 			setInteger(&vf, data[iData:], options)
 			iData += int(tf.Type.Size())
 		}
@@ -134,8 +134,8 @@ func isNonNilPointerToStruct(v any) bool {
 	return rv.Kind() == reflect.Pointer && !rv.IsNil() && rv.Elem().Kind() == reflect.Struct
 }
 
-func isInteger(field reflect.StructField) bool {
-	switch field.Type.Kind() {
+func isInteger(kind reflect.Kind) bool {
+	switch kind {
 	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return true
@@ -157,7 +157,7 @@ func validateStruct(v any) error {
 		if err != nil {
 			return err
 		}
-		if !isInteger(field) {
+		if !isInteger(field.Type.Kind()) {
 			return errors.New("bit field must be an integer type")
 		}
 		if bitSize <= 0 {
