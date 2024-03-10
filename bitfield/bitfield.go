@@ -76,25 +76,7 @@ func Unmarshal(data []byte, v any, opts ...Option) error {
 		if tag, ok := tf.Tag.Lookup("bit"); ok {
 			// Already checked error
 			bitSize, _ := strconv.Atoi(tag)
-			var val uint64
-
-			i := 0
-			for i < bitSize && iData < len(data) {
-				d := uint64(data[iData])
-				for ; iBitInData < 8 && i < bitSize; iBitInData, i = iBitInData+1, i+1 {
-					val |= (((d >> iBitInData) & 1) << i)
-				}
-				if iBitInData >= 8 {
-					iData++
-					iBitInData = 0
-				}
-			}
-
-			if vf.CanUint() {
-				vf.SetUint(val)
-			} else if vf.CanInt() {
-				vf.SetInt(signed(val, bitSize))
-			}
+			iData, iBitInData = setBitField(bitSize, iData, data, iBitInData, &vf)
 		} else if isInteger(tf.Type.Kind()) {
 			setInteger(&vf, data[iData:], options)
 			iData += int(tf.Type.Size())
@@ -102,6 +84,38 @@ func Unmarshal(data []byte, v any, opts ...Option) error {
 	}
 
 	return nil
+}
+
+func setBitField(bitSize int, iData int, data []byte, iBitInData int, vf *reflect.Value) (int, int) {
+	var val uint64
+	i := 0
+	for i < bitSize && iData < len(data) {
+		d := uint64(data[iData])
+		for ; iBitInData < 8 && i < bitSize; iBitInData, i = iBitInData+1, i+1 {
+			val |= (((d >> iBitInData) & 1) << i)
+		}
+		if iBitInData >= 8 {
+			iData++
+			iBitInData = 0
+		}
+	}
+
+	if vf.CanUint() {
+		vf.SetUint(val)
+	} else if vf.CanInt() {
+		vf.SetInt(signed(val, bitSize))
+	}
+	return iData, iBitInData
+}
+
+/**
+ * Convert an unsigned integer with a specific bit length to a signed integer
+ * For example, signed(val = 0b00101101, bitSize = 6) returns 0b11101101
+ */
+func signed(val uint64, bitSize int) int64 {
+	msb := val >> (bitSize - 1)
+	pattern := (0 - msb) << bitSize
+	return int64(val | pattern)
 }
 
 func setInteger(vf *reflect.Value, data []byte, options options) {
@@ -175,14 +189,4 @@ func validateUnmarshalType(v any) error {
 		return &InvalidUnmarshalError{reflect.TypeOf(v)}
 	}
 	return validateStruct(v)
-}
-
-/**
- * Convert an unsigned integer with a specific bit length to a signed integer
- * For example, signed(val = 0b00101101, bitSize = 6) returns 0b11101101
- */
-func signed(val uint64, bitSize int) int64 {
-	msb := val >> (bitSize - 1)
-	pattern := (0 - msb) << bitSize
-	return int64(val | pattern)
 }
