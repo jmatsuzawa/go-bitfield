@@ -26,36 +26,6 @@ func (e *InvalidUnmarshalError) Error() string {
 	return "go-bitfield: Unmarshal(nil " + e.Type.String() + ")"
 }
 
-type ByteOrder int
-
-const (
-	LittleEndian ByteOrder = iota
-	BigEndian
-)
-
-type options struct {
-	ByteOrder ByteOrder
-}
-
-type Option func(*options) error
-
-func WithByteOrder(order ByteOrder) Option {
-	return func(o *options) error {
-		o.ByteOrder = order
-		return nil
-	}
-}
-
-func collectOptions(opts []Option) (options, error) {
-	var options options
-	for _, opt := range opts {
-		if err := opt(&options); err != nil {
-			return options, err
-		}
-	}
-	return options, nil
-}
-
 func Unmarshal(data []byte, v any, opts ...Option) error {
 	if err := validateUnmarshalType(v); err != nil {
 		return err
@@ -141,11 +111,6 @@ func setIntegerField(vf *reflect.Value, data []byte, options options) {
 	}
 }
 
-func isNonNilPointerToStruct(v any) bool {
-	rv := reflect.ValueOf(v)
-	return rv.Kind() == reflect.Pointer && !rv.IsNil() && rv.Elem().Kind() == reflect.Struct
-}
-
 func isInteger(kind reflect.Kind) bool {
 	switch kind {
 	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
@@ -154,6 +119,11 @@ func isInteger(kind reflect.Kind) bool {
 	default:
 		return false
 	}
+}
+
+func isNonNilPointerToStruct(v any) bool {
+	rv := reflect.ValueOf(v)
+	return rv.Kind() == reflect.Pointer && !rv.IsNil() && rv.Elem().Kind() == reflect.Struct
 }
 
 func validateStruct(v any) error {
