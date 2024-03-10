@@ -46,7 +46,7 @@ func WithByteOrder(order ByteOrder) Option {
 	}
 }
 
-func getOptions(opts []Option) (options, error) {
+func collectOptions(opts []Option) (options, error) {
 	var options options
 	for _, opt := range opts {
 		if err := opt(&options); err != nil {
@@ -60,7 +60,7 @@ func Unmarshal(data []byte, v any, opts ...Option) error {
 	if err := validateUnmarshalType(v); err != nil {
 		return err
 	}
-	options, err := getOptions(opts)
+	options, err := collectOptions(opts)
 	if err != nil {
 		return err
 	}
