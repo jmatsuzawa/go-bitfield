@@ -60,30 +60,29 @@ func Unmarshal(data []byte, v any, opts ...Option) error {
 	if err := validateUnmarshalType(v); err != nil {
 		return err
 	}
-
 	options, err := getOptions(opts)
 	if err != nil {
 		return err
 	}
+	unmarshal(data, v, options)
+	return nil
+}
 
-	rv := reflect.ValueOf(v)
+func unmarshal(data []byte, v any, options options) {
 	iData := 0
 	iBitInData := 0
 	rt := reflect.TypeOf(v).Elem()
 	for iField := 0; iField < rt.NumField(); iField++ {
-		tf := rt.Field(iField)
-		vf := rv.Elem().Field(iField)
-		if tag, ok := tf.Tag.Lookup("bit"); ok {
+		vf := reflect.ValueOf(v).Elem().Field(iField)
+		if tag, ok := rt.Field(iField).Tag.Lookup("bit"); ok {
 			// Already checked error
 			bitSize, _ := strconv.Atoi(tag)
 			iData, iBitInData = setBitField(bitSize, iData, data, iBitInData, &vf)
-		} else if isInteger(tf.Type.Kind()) {
+		} else if isInteger(vf.Kind()) {
 			setInteger(&vf, data[iData:], options)
-			iData += int(tf.Type.Size())
+			iData += int(vf.Type().Size())
 		}
 	}
-
-	return nil
 }
 
 func setBitField(bitSize int, iData int, data []byte, iBitInData int, vf *reflect.Value) (int, int) {
@@ -99,7 +98,6 @@ func setBitField(bitSize int, iData int, data []byte, iBitInData int, vf *reflec
 			iBitInData = 0
 		}
 	}
-
 	if vf.CanUint() {
 		vf.SetUint(val)
 	} else if vf.CanInt() {
