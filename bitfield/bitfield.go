@@ -47,7 +47,7 @@ func unmarshal(data []byte, v any, options options) {
 		if tag, ok := rt.Field(iField).Tag.Lookup("bit"); ok {
 			// Already checked error
 			bitSize, _ := strconv.Atoi(tag)
-			iData, iBitInData = setBitField(bitSize, iData, data, iBitInData, &vf)
+			iData, iBitInData = setBitField(&vf, data, bitSize, iData, iBitInData)
 		} else if isInteger(vf.Kind()) {
 			setIntegerField(&vf, data[iData:], options)
 			iData += int(vf.Type().Size())
@@ -55,7 +55,7 @@ func unmarshal(data []byte, v any, options options) {
 	}
 }
 
-func setBitField(bitSize int, iData int, data []byte, iBitInData int, vf *reflect.Value) (int, int) {
+func setBitField(vf *reflect.Value, data []byte, bitSize, iData, iBitInData int) (int, int) {
 	var val uint64
 	i := 0
 	for i < bitSize && iData < len(data) {
