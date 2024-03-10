@@ -96,33 +96,37 @@ func Unmarshal(data []byte, v any, opts ...Option) error {
 				vf.SetInt(signed(val, bitSize))
 			}
 		} else if isInteger(tf) {
-			var byteOrder binary.ByteOrder = binary.LittleEndian
-			if options.ByteOrder == BigEndian {
-				byteOrder = binary.BigEndian
-			}
-			switch tf.Type.Kind() {
-			case reflect.Uint8:
-				vf.SetUint(uint64(data[iData]))
-			case reflect.Uint16:
-				vf.SetUint(uint64(byteOrder.Uint16(data[iData:])))
-			case reflect.Uint32:
-				vf.SetUint(uint64(byteOrder.Uint32(data[iData:])))
-			case reflect.Uint64:
-				vf.SetUint(byteOrder.Uint64(data[iData:]))
-			case reflect.Int8:
-				vf.SetInt(int64(int8(data[iData])))
-			case reflect.Int16:
-				vf.SetInt(int64(int16(byteOrder.Uint16(data[iData:]))))
-			case reflect.Int32:
-				vf.SetInt(int64(int32(byteOrder.Uint32(data[iData:]))))
-			case reflect.Int64:
-				vf.SetInt(int64(byteOrder.Uint64(data[iData:])))
-			}
+			setInteger(&vf, data[iData:], options)
 			iData += int(tf.Type.Size())
 		}
 	}
 
 	return nil
+}
+
+func setInteger(vf *reflect.Value, data []byte, options options) {
+	var byteOrder binary.ByteOrder = binary.LittleEndian
+	if options.ByteOrder == BigEndian {
+		byteOrder = binary.BigEndian
+	}
+	switch vf.Kind() {
+	case reflect.Uint8:
+		vf.SetUint(uint64(data[0]))
+	case reflect.Uint16:
+		vf.SetUint(uint64(byteOrder.Uint16(data)))
+	case reflect.Uint32:
+		vf.SetUint(uint64(byteOrder.Uint32(data)))
+	case reflect.Uint64:
+		vf.SetUint(byteOrder.Uint64(data))
+	case reflect.Int8:
+		vf.SetInt(int64(int8(data[0])))
+	case reflect.Int16:
+		vf.SetInt(int64(int16(byteOrder.Uint16(data))))
+	case reflect.Int32:
+		vf.SetInt(int64(int32(byteOrder.Uint32(data))))
+	case reflect.Int64:
+		vf.SetInt(int64(byteOrder.Uint64(data)))
+	}
 }
 
 func isNonNilPointerToStruct(v any) bool {
