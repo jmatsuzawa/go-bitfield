@@ -79,7 +79,7 @@ func unmarshal(data []byte, v any, options options) {
 			bitSize, _ := strconv.Atoi(tag)
 			iData, iBitInData = setBitField(bitSize, iData, data, iBitInData, &vf)
 		} else if isInteger(vf.Kind()) {
-			setInteger(&vf, data[iData:], options)
+			setIntegerField(&vf, data[iData:], options)
 			iData += int(vf.Type().Size())
 		}
 	}
@@ -116,7 +116,7 @@ func signed(val uint64, bitSize int) int64 {
 	return int64(val | pattern)
 }
 
-func setInteger(vf *reflect.Value, data []byte, options options) {
+func setIntegerField(vf *reflect.Value, data []byte, options options) {
 	var byteOrder binary.ByteOrder = binary.LittleEndian
 	if options.ByteOrder == BigEndian {
 		byteOrder = binary.BigEndian
