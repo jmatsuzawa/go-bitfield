@@ -291,3 +291,42 @@ func TestUnmarshalError(t *testing.T) {
 		})
 	}
 }
+
+func TestUnmarshalByteOrder(t *testing.T) {
+	// Setup
+	type a struct{ A uint32 }
+	testCases := map[string]struct {
+		argData []byte
+		argV    a
+		argOpts []Option
+		want    uint32
+	}{
+		"LittleEndian": {
+			argData: []byte{0x01, 0x23, 0x45, 0x67},
+			argV:    a{},
+			argOpts: []Option{WithByteOrder(LittleEndian)},
+			want:    0x67452301,
+		},
+		"BigEndian": {
+			argData: []byte{0x01, 0x23, 0x45, 0x67},
+			argV:    a{},
+			argOpts: []Option{WithByteOrder(BigEndian)},
+			want:    0x01234567,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			// Exercise
+			err := Unmarshal(tc.argData, &tc.argV, tc.argOpts...)
+
+			// Verify
+			if err != nil {
+				t.Fatalf("Unmarshal() = %v; want nil", err)
+			}
+			if tc.argV.A != tc.want {
+				t.Errorf("Unmarshal() -> v.A = %#x; want %#x", tc.argV.A, tc.want)
+			}
+		})
+	}
+}

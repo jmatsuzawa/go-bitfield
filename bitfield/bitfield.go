@@ -26,8 +26,43 @@ func (e *InvalidUnmarshalError) Error() string {
 	return "go-bitfield: Unmarshal(nil " + e.Type.String() + ")"
 }
 
-func Unmarshal(data []byte, v any) error {
+type ByteOrder int
+
+const (
+	LittleEndian ByteOrder = iota
+	BigEndian
+)
+
+type options struct {
+	ByteOrder ByteOrder
+}
+
+type Option func(*options) error
+
+func WithByteOrder(order ByteOrder) Option {
+	return func(o *options) error {
+		o.ByteOrder = order
+		return nil
+	}
+}
+
+func getOptions(opts []Option) (options, error) {
+	var options options
+	for _, opt := range opts {
+		if err := opt(&options); err != nil {
+			return options, err
+		}
+	}
+	return options, nil
+}
+
+func Unmarshal(data []byte, v any, opts ...Option) error {
 	if err := validateUnmarshalType(v); err != nil {
+		return err
+	}
+
+	options, err := getOptions(opts)
+	if err != nil {
 		return err
 	}
 
@@ -61,23 +96,27 @@ func Unmarshal(data []byte, v any) error {
 				vf.SetInt(signed(val, bitSize))
 			}
 		} else if isInteger(tf) {
+			var byteOrder binary.ByteOrder = binary.LittleEndian
+			if options.ByteOrder == BigEndian {
+				byteOrder = binary.BigEndian
+			}
 			switch tf.Type.Kind() {
 			case reflect.Uint8:
 				vf.SetUint(uint64(data[iData]))
 			case reflect.Uint16:
-				vf.SetUint(uint64(binary.LittleEndian.Uint16(data[iData:])))
+				vf.SetUint(uint64(byteOrder.Uint16(data[iData:])))
 			case reflect.Uint32:
-				vf.SetUint(uint64(binary.LittleEndian.Uint32(data[iData:])))
+				vf.SetUint(uint64(byteOrder.Uint32(data[iData:])))
 			case reflect.Uint64:
-				vf.SetUint(binary.LittleEndian.Uint64(data[iData:]))
+				vf.SetUint(byteOrder.Uint64(data[iData:]))
 			case reflect.Int8:
 				vf.SetInt(int64(int8(data[iData])))
 			case reflect.Int16:
-				vf.SetInt(int64(int16(binary.LittleEndian.Uint16(data[iData:]))))
+				vf.SetInt(int64(int16(byteOrder.Uint16(data[iData:]))))
 			case reflect.Int32:
-				vf.SetInt(int64(int32(binary.LittleEndian.Uint32(data[iData:]))))
+				vf.SetInt(int64(int32(byteOrder.Uint32(data[iData:]))))
 			case reflect.Int64:
-				vf.SetInt(int64(binary.LittleEndian.Uint64(data[iData:])))
+				vf.SetInt(int64(byteOrder.Uint64(data[iData:])))
 			}
 			iData += int(tf.Type.Size())
 		}
