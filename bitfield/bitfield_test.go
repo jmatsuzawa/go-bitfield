@@ -260,6 +260,11 @@ func TestUnmarshalBitSizeLimitError(t *testing.T) {
 			if err == nil {
 				t.Errorf("Unmarshal() = %v; want error", err)
 			}
+			switch err := err.(type) {
+			case *InvalidFieldError:
+			default:
+				t.Errorf("Unmarshal() = %s; want InvalidField", err)
+			}
 		})
 	}
 }
@@ -284,9 +289,9 @@ func TestUnmarshalError(t *testing.T) {
 				t.Errorf("Unmarshal() = %v; want error", err)
 			}
 			switch err := err.(type) {
-			case *InvalidUnmarshalError:
+			case *InvalidTypeError:
 			default:
-				t.Errorf("Unmarshal() = %s; want InvalidUnmarshalError", err)
+				t.Errorf("Unmarshal() = %s; want InvalidTypeError", err)
 			}
 		})
 	}

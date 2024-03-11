@@ -2,28 +2,41 @@ package bitfield
 
 import (
 	"encoding/binary"
-	"errors"
 	"reflect"
 	"strconv"
 )
 
-// An InvalidUnmarshalError describes an invalid argument passed to [Unmarshal].
+// An InvalidTypeError describes an invalid type passed to [Unmarshal].
 // (The argument to [Unmarshal] must be a non-nil pointer to a struct.)
-type InvalidUnmarshalError struct {
+type InvalidTypeError struct {
 	Type reflect.Type
 }
 
-func (e *InvalidUnmarshalError) Error() string {
+func (e *InvalidTypeError) Error() string {
 	if e.Type == nil {
-		return "go-bitfield: Unmarshal(nil)"
+		return "bitfield: invalid type passed (nil)"
 	}
 	if e.Type.Kind() != reflect.Pointer {
-		return "go-bitfield: Unmarshal(non-pointer " + e.Type.String() + ")"
+		return "bitfield: invalid type passed (non-pointer " + e.Type.String() + ")"
 	}
 	if e.Type.Elem().Kind() != reflect.Struct {
-		return "go-bitfield: Unmarshal(pointer to non-struct " + e.Type.String() + ")"
+		return "bitfield: invalid type passed (pointer to non-struct " + e.Type.String() + ")"
 	}
-	return "go-bitfield: Unmarshal(nil " + e.Type.String() + ")"
+	return "bitfield: invalid type passed (nil " + e.Type.String() + ")"
+}
+
+type InvalidFieldError struct {
+	Field   reflect.StructField
+	problem string
+	Err     error
+}
+
+func (e *InvalidFieldError) Error() string {
+	return "bitfield: " + e.problem + " (" + e.Field.Name + " " + e.Field.Type.String() + " `" + string(e.Field.Tag) + "`)"
+}
+
+func (e *InvalidFieldError) Unwrap() error {
+	return e.Err
 }
 
 func Unmarshal(data []byte, v any, opts ...Option) error {
@@ -137,16 +150,29 @@ func validateStruct(v any) error {
 
 		bitSize, err := strconv.Atoi(tag)
 		if err != nil {
-			return err
+			return &InvalidFieldError{
+				Field:   field,
+				problem: "bit size must be integer",
+				Err:     err,
+			}
 		}
 		if !isInteger(field.Type.Kind()) {
-			return errors.New("bit field must be an integer type")
+			return &InvalidFieldError{
+				Field:   field,
+				problem: "bit field must be fixed-size integer type",
+			}
 		}
 		if bitSize <= 0 {
-			return errors.New("bit length must be greater than 0")
+			return &InvalidFieldError{
+				Field:   field,
+				problem: "bit size must be greater than 0",
+			}
 		}
 		if bitSize > field.Type.Bits() {
-			return errors.New("bit length must be less than or equal to the type size")
+			return &InvalidFieldError{
+				Field:   field,
+				problem: "bit size must be less than or equal to the type size",
+			}
 		}
 	}
 	return nil
@@ -154,7 +180,7 @@ func validateStruct(v any) error {
 
 func validateUnmarshalType(v any) error {
 	if !isNonNilPointerToStruct(v) {
-		return &InvalidUnmarshalError{reflect.TypeOf(v)}
+		return &InvalidTypeError{reflect.TypeOf(v)}
 	}
 	return validateStruct(v)
 }
