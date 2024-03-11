@@ -57,6 +57,11 @@ func unmarshal(data []byte, v any, options options) {
 			bitSize, _ := strconv.Atoi(tag)
 			iData, iBitInData = setValueToBitField(&vf, data, bitSize, iData, iBitInData)
 		} else if isFixedInteger(vf.Kind()) {
+			// If the previous field is not fully read, the next plain integer field should be read from the next byte
+			if iBitInData > 0 {
+				iData++
+				iBitInData = 0
+			}
 			setValueToIntegerField(&vf, data[iData:], options)
 			iData += int(vf.Type().Size())
 		}

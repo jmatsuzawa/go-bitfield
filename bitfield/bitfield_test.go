@@ -181,10 +181,12 @@ func TestUnmarshalCompositeOfBitFieldsAndNonNormalInteger(t *testing.T) {
 		Uint8G  uint8
 		BitH    uint8 `bit:"5"`
 		BitI    uint8 `bit:"3"`
+		BitJ    uint8 `bit:"3"`
+		Uint16K uint16
 	}
 
 	// Exercise
-	err := Unmarshal([]byte{0b10100101, 0x5A, 0xB6, 0x6B, 0x5A, 0xA5, 0x55, 0xAA, 0xF0, 0b10101010}, &v)
+	err := Unmarshal([]byte{0b10100101, 0x5A, 0xB6, 0x6B, 0x5A, 0xA5, 0x55, 0xAA, 0xF0, 0b10101010, 0xA5, 0x6B, 0xB6}, &v)
 
 	// Verify
 	if err != nil {
@@ -216,6 +218,12 @@ func TestUnmarshalCompositeOfBitFieldsAndNonNormalInteger(t *testing.T) {
 	}
 	if v.BitI != 0b101 {
 		t.Fatalf("Unmarshal() -> v.BitI = %#b; want 0b101", v.BitI)
+	}
+	if v.BitJ != 0b101 {
+		t.Fatalf("Unmarshal() -> v.BitJ = %#b; want 0b101", v.BitJ)
+	}
+	if v.Uint16K != 0xB66B {
+		t.Fatalf("Unmarshal() -> v.Uint16K = %#x; want 0xB66B", v.Uint16K)
 	}
 }
 
