@@ -143,36 +143,37 @@ func validateStruct(v any) error {
 	rt := reflect.TypeOf(v).Elem()
 	for i := 0; i < rt.NumField(); i++ {
 		field := rt.Field(i)
-		tag, ok := field.Tag.Lookup("bit")
-		if !ok {
-			continue
+		if err := validateField(field); err != nil {
+			return err
 		}
+	}
+	return nil
+}
 
-		bitSize, err := strconv.Atoi(tag)
-		if err != nil {
-			return &InvalidFieldError{
-				Field:   field,
-				problem: "bit size must be integer",
-				Err:     err,
-			}
+func validateField(field reflect.StructField) error {
+	tag, ok := field.Tag.Lookup("bit")
+	if !ok {
+		return nil
+	}
+
+	bitSize, err := strconv.Atoi(tag)
+	if err != nil {
+		return &InvalidFieldError{
+			Field:   field,
+			problem: "bit size must be integer",
+			Err:     err,
 		}
-		if !isInteger(field.Type.Kind()) {
-			return &InvalidFieldError{
-				Field:   field,
-				problem: "bit field must be fixed-size integer type",
-			}
+	}
+	if !isInteger(field.Type.Kind()) {
+		return &InvalidFieldError{
+			Field:   field,
+			problem: "bit field must be fixed-size integer type",
 		}
-		if bitSize <= 0 {
-			return &InvalidFieldError{
-				Field:   field,
-				problem: "bit size must be greater than 0",
-			}
-		}
-		if bitSize > field.Type.Bits() {
-			return &InvalidFieldError{
-				Field:   field,
-				problem: "bit size must be less than or equal to the type size",
-			}
+	}
+	if !(1 <= bitSize && bitSize <= field.Type.Bits()) {
+		return &InvalidFieldError{
+			Field:   field,
+			problem: "bit size must be within range 1 to its type size",
 		}
 	}
 	return nil
