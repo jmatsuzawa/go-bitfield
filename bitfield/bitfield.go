@@ -61,7 +61,7 @@ func unmarshal(data []byte, v any, options options) {
 			// Already checked error
 			bitSize, _ := strconv.Atoi(tag)
 			iData, iBitInData = setValueToBitField(&vf, data, bitSize, iData, iBitInData)
-		} else if isInteger(vf.Kind()) {
+		} else if isFixedInteger(vf.Kind()) {
 			setValueToIntegerField(&vf, data[iData:], options)
 			iData += int(vf.Type().Size())
 		}
@@ -124,7 +124,7 @@ func setValueToIntegerField(vf *reflect.Value, data []byte, options options) {
 	}
 }
 
-func isInteger(kind reflect.Kind) bool {
+func isFixedInteger(kind reflect.Kind) bool {
 	switch kind {
 	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
@@ -164,7 +164,7 @@ func validateField(field reflect.StructField) error {
 			Err:     err,
 		}
 	}
-	if !isInteger(field.Type.Kind()) {
+	if !isFixedInteger(field.Type.Kind()) {
 		return &InvalidFieldError{
 			Field:   field,
 			problem: "bit field must be fixed-size integer type",
