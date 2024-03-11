@@ -28,15 +28,10 @@ func (e *InvalidTypeError) Error() string {
 type InvalidFieldError struct {
 	Field   reflect.StructField
 	problem string
-	Err     error
 }
 
 func (e *InvalidFieldError) Error() string {
 	return "bitfield: " + e.problem + " (" + e.Field.Name + " " + e.Field.Type.String() + " `" + string(e.Field.Tag) + "`)"
-}
-
-func (e *InvalidFieldError) Unwrap() error {
-	return e.Err
 }
 
 func Unmarshal(data []byte, v any, opts ...Option) error {
@@ -161,7 +156,6 @@ func validateField(field reflect.StructField) error {
 		return &InvalidFieldError{
 			Field:   field,
 			problem: "bit size must be integer",
-			Err:     err,
 		}
 	}
 	if !isFixedInteger(field.Type.Kind()) {
