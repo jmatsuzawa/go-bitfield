@@ -8,14 +8,14 @@ const (
 )
 
 type options struct {
-	ByteOrder ByteOrder
+	byteOrder ByteOrder
 }
 
 type Option func(*options) error
 
 func WithByteOrder(order ByteOrder) Option {
 	return func(o *options) error {
-		o.ByteOrder = order
+		o.byteOrder = order
 		return nil
 	}
 }

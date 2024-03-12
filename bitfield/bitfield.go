@@ -73,7 +73,7 @@ func signed(val uint64, bitSize int) int64 {
 
 func setValueToIntegerField(vf *reflect.Value, data []byte, options options) {
 	var byteOrder binary.ByteOrder = binary.LittleEndian
-	if options.ByteOrder == BigEndian {
+	if options.byteOrder == BigEndian {
 		byteOrder = binary.BigEndian
 	}
 	switch vf.Kind() {
