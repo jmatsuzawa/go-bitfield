@@ -1,6 +1,7 @@
 package bitfield
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -31,10 +32,10 @@ func TestUnmarshalPlainInteger(t *testing.T) {
 	// Exercise
 	err := Unmarshal(inputData, &v)
 
+	// Verify
 	if err != nil {
 		t.Fatalf("Unmarshal() = %v; want nil", err)
 	}
-
 	if v.Uint8 != 0x01 {
 		t.Errorf("Unmarshal() -> v.Uint8 = %#x; want 0x01", v.Uint8)
 	}
@@ -160,20 +161,18 @@ func TestUnmarshalBitSizeLimitError(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// Exercise
 			err := Unmarshal(tc.argData, tc.argV)
+
 			// Verify
-			if err == nil {
-				t.Errorf("Unmarshal() = %v; want error", err)
-			}
-			switch err := err.(type) {
-			case *FieldError:
-			default:
-				t.Errorf("Unmarshal() = %s; want InvalidField", err)
+			var fieldError *FieldError
+			if !errors.As(err, &fieldError) {
+				t.Errorf("Unmarshal() = %v; want FieldError", err)
 			}
 		})
 	}
 }
 
 func TestUnmarshalError(t *testing.T) {
+	// Setup
 	var integer int
 	var nilPointer *struct{} = nil
 	testCases := map[string]struct {
@@ -188,14 +187,13 @@ func TestUnmarshalError(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
+			// Exercise
 			err := Unmarshal(tc.argData, tc.argV)
-			if err == nil {
-				t.Errorf("Unmarshal() = %v; want error", err)
-			}
-			switch err := err.(type) {
-			case *TypeError:
-			default:
-				t.Errorf("Unmarshal() = %s; want InvalidTypeError", err)
+
+			// Verify
+			var typeError *TypeError
+			if !errors.As(err, &typeError) {
+				t.Errorf("Unmarshal() = %s; want TypeError", err)
 			}
 		})
 	}

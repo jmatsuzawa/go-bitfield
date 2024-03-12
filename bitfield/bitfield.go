@@ -6,24 +6,24 @@ import (
 	"strconv"
 )
 
-func Unmarshal(data []byte, v any, opts ...Option) error {
-	if err := validateUnmarshalType(v); err != nil {
+func Unmarshal(data []byte, out any, opts ...Option) error {
+	if err := validateUnmarshalType(out); err != nil {
 		return err
 	}
 	options, err := collectOptions(opts)
 	if err != nil {
 		return err
 	}
-	unmarshal(data, v, options)
+	unmarshal(data, out, options)
 	return nil
 }
 
-func unmarshal(data []byte, v any, options options) {
+func unmarshal(data []byte, out any, options options) {
 	iData := 0
 	iBitInData := 0
-	rt := reflect.TypeOf(v).Elem()
+	rt := reflect.TypeOf(out).Elem()
 	for iField := 0; iField < rt.NumField(); iField++ {
-		vf := reflect.ValueOf(v).Elem().Field(iField)
+		vf := reflect.ValueOf(out).Elem().Field(iField)
 		if tag, ok := rt.Field(iField).Tag.Lookup("bit"); ok {
 			// Already checked error
 			bitSize, _ := strconv.Atoi(tag)
