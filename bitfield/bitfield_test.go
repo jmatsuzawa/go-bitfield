@@ -17,17 +17,19 @@ func TestUnmarshalPlainInteger(t *testing.T) {
 		Int64  int64
 	}
 
+	inputData := []byte{
+		0x01,
+		0x23, 0x45,
+		0x67, 0x89, 0xAB, 0xCD,
+		0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD,
+		0x01,
+		0x23, 0x45,
+		0x67, 0x89, 0xAB, 0xCD,
+		0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD,
+	}
+
 	// Exercise
-	err := Unmarshal([]byte{
-		0x01,
-		0x23, 0x45,
-		0x67, 0x89, 0xAB, 0xCD,
-		0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD,
-		0x01,
-		0x23, 0x45,
-		0x67, 0x89, 0xAB, 0xCD,
-		0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD,
-	}, &v)
+	err := Unmarshal(inputData, &v)
 
 	if err != nil {
 		t.Fatalf("Unmarshal() = %v; want nil", err)
@@ -51,11 +53,9 @@ func TestUnmarshalPlainInteger(t *testing.T) {
 	if v.Int16 != int16(0x4523) {
 		t.Errorf("Unmarshal() -> uint16(v.Int16) = %#x; want 0x4523", v.Int16)
 	}
-	// if uint32(v.Int32) != 0xCDAB8967 {
 	if v.Int32 != -844_396_185 { // 0xCDAB8967
 		t.Errorf("Unmarshal() -> uint32(v.Int32) = %#x; want 0xCDAB8967", v.Int32)
 	}
-	// if uint64(v.Int64) != 0xCDAB8967452301EF {
 	if v.Int64 != -3_626_653_998_282_243_601 { // 0xCDAB8967452301EF
 		t.Errorf("Unmarshal() -> uint64(v.Int64) = %#x; want 0xCDAB8967452301EF", v.Int64)
 	}
@@ -133,6 +133,9 @@ func TestUnmarshalBitSizeLimitError(t *testing.T) {
 	var overTypeSize struct {
 		A uint8 `bit:"9"`
 	}
+	var over64Bits struct {
+		A uint64 `bit:"65"`
+	}
 	var sizeNonNumber struct {
 		A uint8 `bit:"x"`
 	}
@@ -148,6 +151,7 @@ func TestUnmarshalBitSizeLimitError(t *testing.T) {
 		"size zero":           {[]byte{0x00}, &sizeZero},
 		"size less than zero": {[]byte{0x00}, &sizeLessThanZero},
 		"over type size":      {[]byte{0x00}, &overTypeSize},
+		"over 64 bits":        {[]byte{0x00}, &over64Bits},
 		"size non-number":     {[]byte{0x00}, &sizeNonNumber},
 		"non-int field":       {[]byte{0x00}, &nonIntField},
 	}
