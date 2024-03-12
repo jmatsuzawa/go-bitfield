@@ -9,20 +9,12 @@ import (
 // An InvalidTypeError describes an invalid type passed to [Unmarshal].
 // (The argument to [Unmarshal] must be a non-nil pointer to a struct.)
 type InvalidTypeError struct {
-	Type reflect.Type
+	Type    reflect.Type
+	problem string
 }
 
 func (e *InvalidTypeError) Error() string {
-	if e.Type == nil {
-		return "bitfield: invalid type passed (nil)"
-	}
-	if e.Type.Kind() != reflect.Pointer {
-		return "bitfield: invalid type passed (non-pointer " + e.Type.String() + ")"
-	}
-	if e.Type.Elem().Kind() != reflect.Struct {
-		return "bitfield: invalid type passed (pointer to non-struct " + e.Type.String() + ")"
-	}
-	return "bitfield: invalid type passed (nil " + e.Type.String() + ")"
+	return "bitfield: " + e.problem
 }
 
 type InvalidFieldError struct {
@@ -134,9 +126,34 @@ func isFixedInteger(kind reflect.Kind) bool {
 	}
 }
 
-func isNonNilPointerToStruct(v any) bool {
+func ensureNonNilPointerToStruct(v any) error {
+	errMsg := "de/encoded object must be non-nil pointer to struct"
 	rv := reflect.ValueOf(v)
-	return rv.Kind() == reflect.Pointer && !rv.IsNil() && rv.Elem().Kind() == reflect.Struct
+	if rv.Kind() == reflect.Invalid {
+		return &InvalidTypeError{
+			Type:    reflect.TypeOf(v),
+			problem: errMsg + " (nil passed)",
+		}
+	}
+	if rv.Kind() != reflect.Pointer {
+		return &InvalidTypeError{
+			Type:    reflect.TypeOf(v),
+			problem: errMsg + " (" + rv.Type().String() + " passed)",
+		}
+	}
+	if rv.IsNil() {
+		return &InvalidTypeError{
+			Type:    reflect.TypeOf(v),
+			problem: errMsg + " (nil " + rv.Type().String() + " passed)",
+		}
+	}
+	if rv.Elem().Kind() != reflect.Struct {
+		return &InvalidTypeError{
+			Type:    reflect.TypeOf(v),
+			problem: errMsg + " (" + rv.Type().String() + " passed)",
+		}
+	}
+	return nil
 }
 
 func validateStruct(v any) error {
@@ -179,8 +196,8 @@ func validateField(field reflect.StructField) error {
 }
 
 func validateUnmarshalType(v any) error {
-	if !isNonNilPointerToStruct(v) {
-		return &InvalidTypeError{reflect.TypeOf(v)}
+	if err := ensureNonNilPointerToStruct(v); err != nil {
+		return err
 	}
 	return validateStruct(v)
 }
