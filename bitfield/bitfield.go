@@ -6,23 +6,23 @@ import (
 	"strconv"
 )
 
-// An InvalidTypeError describes an invalid type passed to [Unmarshal].
+// An TypeError describes an invalid type passed to [Unmarshal].
 // (The argument to [Unmarshal] must be a non-nil pointer to a struct.)
-type InvalidTypeError struct {
+type TypeError struct {
 	Type    reflect.Type
 	problem string
 }
 
-func (e *InvalidTypeError) Error() string {
+func (e *TypeError) Error() string {
 	return "bitfield: " + e.problem
 }
 
-type InvalidFieldError struct {
+type FieldError struct {
 	Field   reflect.StructField
 	problem string
 }
 
-func (e *InvalidFieldError) Error() string {
+func (e *FieldError) Error() string {
 	return "bitfield: " + e.problem + " (" + e.Field.Name + " " + e.Field.Type.String() + " `" + string(e.Field.Tag) + "`)"
 }
 
@@ -130,25 +130,25 @@ func ensureNonNilPointerToStruct(v any) error {
 	errMsg := "de/encoded object must be non-nil pointer to struct"
 	rv := reflect.ValueOf(v)
 	if rv.Kind() == reflect.Invalid {
-		return &InvalidTypeError{
+		return &TypeError{
 			Type:    reflect.TypeOf(v),
 			problem: errMsg + " (nil passed)",
 		}
 	}
 	if rv.Kind() != reflect.Pointer {
-		return &InvalidTypeError{
+		return &TypeError{
 			Type:    reflect.TypeOf(v),
 			problem: errMsg + " (" + rv.Type().String() + " passed)",
 		}
 	}
 	if rv.IsNil() {
-		return &InvalidTypeError{
+		return &TypeError{
 			Type:    reflect.TypeOf(v),
 			problem: errMsg + " (nil " + rv.Type().String() + " passed)",
 		}
 	}
 	if rv.Elem().Kind() != reflect.Struct {
-		return &InvalidTypeError{
+		return &TypeError{
 			Type:    reflect.TypeOf(v),
 			problem: errMsg + " (" + rv.Type().String() + " passed)",
 		}
@@ -175,19 +175,19 @@ func validateField(field reflect.StructField) error {
 
 	bitSize, err := strconv.Atoi(tag)
 	if err != nil {
-		return &InvalidFieldError{
+		return &FieldError{
 			Field:   field,
 			problem: "bit size must be integer",
 		}
 	}
 	if !isFixedInteger(field.Type.Kind()) {
-		return &InvalidFieldError{
+		return &FieldError{
 			Field:   field,
 			problem: "bit field must be fixed-size integer type",
 		}
 	}
 	if !(1 <= bitSize && bitSize <= field.Type.Bits()) {
-		return &InvalidFieldError{
+		return &FieldError{
 			Field:   field,
 			problem: "bit size must be within range 1 to its type size",
 		}
