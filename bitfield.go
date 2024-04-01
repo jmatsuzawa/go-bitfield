@@ -35,20 +35,22 @@ func unmarshal(data []byte, out any, options options) {
 		if tag, ok := rt.Field(iField).Tag.Lookup("bit"); ok {
 			// Already checked error
 			bitSize, _ := strconv.Atoi(tag)
-			iData, iBitInData = setValueToBitField(&vf, data, bitSize, iData, iBitInData)
+			iData, iBitInData = setValueToBitField(&vf, data, bitSize, iData, iBitInData, rt.Field(iField).IsExported())
 		} else if isFixedInteger(vf.Kind()) {
 			// If the previous field is not fully read, the next plain integer field should be read from the next byte
 			if iBitInData > 0 {
 				iData++
 				iBitInData = 0
 			}
-			setValueToIntegerField(&vf, data[iData:], options)
+			if rt.Field(iField).IsExported() {
+				setValueToIntegerField(&vf, data[iData:], options)
+			}
 			iData += int(vf.Type().Size())
 		}
 	}
 }
 
-func setValueToBitField(vf *reflect.Value, data []byte, bitSize, iData, iBitInData int) (int, int) {
+func setValueToBitField(vf *reflect.Value, data []byte, bitSize, iData, iBitInData int, isExported bool) (int, int) {
 	var val uint64
 	i := 0
 	for i < bitSize && iData < len(data) {
@@ -61,10 +63,12 @@ func setValueToBitField(vf *reflect.Value, data []byte, bitSize, iData, iBitInDa
 			iBitInData = 0
 		}
 	}
-	if vf.CanUint() {
-		vf.SetUint(val)
-	} else if vf.CanInt() {
-		vf.SetInt(signed(val, bitSize))
+	if isExported {
+		if vf.CanUint() {
+			vf.SetUint(val)
+		} else if vf.CanInt() {
+			vf.SetInt(signed(val, bitSize))
+		}
 	}
 	return iData, iBitInData
 }
