@@ -6,6 +6,14 @@ import (
 	"strconv"
 )
 
+// Unmarshal decodes the byte slice data and stores the result in a struct with bit-fields pointed by out.
+//
+// The bit size of bit-fields of a struct is specified by a struct tag "bit". See the following example code
+// The bit size must be within the range 1 to the size of the field type. For example, uint8 A `bit:"9"` is not acceptable, which causes FieldError.
+//
+// You can define both plain integer fields without a bit tag and bit-fields with a bit tag in a struct. Fields of not-integer types are ignored by Unmarshal.
+//
+// If out is not a non-nil pointer to a struct, Unmarshal returns a TypeError.
 func Unmarshal(data []byte, out any, opts ...Option) error {
 	if err := validateUnmarshalType(out); err != nil {
 		return err
