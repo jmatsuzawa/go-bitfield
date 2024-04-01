@@ -88,6 +88,29 @@ func TestUnmarshal_PlainIntFields(t *testing.T) {
 	assert.Equal(t, want, got)
 }
 
+func TestUnmarshal_notExported(t *testing.T) {
+	// Setup
+	type s struct {
+		A uint8 `bit:"5"`
+		_ uint8 `bit:"3"`
+		_ uint8 `bit:"2"`
+		B uint8 `bit:"6"`
+	}
+	inputData := []byte{0b101_11001, 0b100110_01}
+	want := s{
+		A: 0b11001,
+		B: 0b100110,
+	}
+
+	// Exercise
+	var got s
+	err := Unmarshal(inputData, &got)
+
+	// Verify
+	assert.Nil(t, err)
+	assert.Equal(t, want, got)
+}
+
 func TestUnmarshalByteOrder(t *testing.T) {
 	// Setup
 	type a struct{ A uint32 }
