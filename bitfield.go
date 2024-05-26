@@ -1,7 +1,6 @@
 package bitfield
 
 import (
-	"encoding/binary"
 	"reflect"
 	"strconv"
 )
@@ -30,28 +29,53 @@ func unmarshal(data []byte, out any, options options) {
 	iData := 0
 	iBitInData := 0
 	rt := reflect.TypeOf(out).Elem()
+	byteOrder := options.byteOrder
 	for iField := 0; iField < rt.NumField(); iField++ {
 		vf := reflect.ValueOf(out).Elem().Field(iField)
+		var bitSize int
 		if tag, ok := rt.Field(iField).Tag.Lookup("bit"); ok {
 			// Already checked error
-			bitSize, _ := strconv.Atoi(tag)
-			iData, iBitInData = setValueToBitField(&vf, data, bitSize, iData, iBitInData, rt.Field(iField).IsExported(), options)
-		} else if isFixedInteger(vf.Kind()) {
+			bitSize, _ = strconv.Atoi(tag)
+		} else if isFixedInteger(rt.Field(iField).Type.Kind()) {
+			bitSize = rt.Field(iField).Type.Bits()
 			// If the previous field is not fully read, the next plain integer field should be read from the next byte
 			if iBitInData > 0 {
 				iData++
 				iBitInData = 0
 			}
-			if rt.Field(iField).IsExported() {
-				setValueToIntegerField(&vf, data[iData:], options)
+		} else {
+			// Ignore non-integer fields
+			continue
+		}
+		var val uint64
+		val, iData, iBitInData = parseValue(data, bitSize, iData, iBitInData, byteOrder)
+
+		if rt.Field(iField).IsExported() {
+			if vf.CanUint() {
+				vf.SetUint(val)
+			} else if vf.CanInt() {
+				vf.SetInt(signed(val, bitSize))
 			}
-			iData += int(vf.Type().Size())
 		}
 	}
 }
 
-func setValueToBitFieldLittleEndian(vf *reflect.Value, data []byte, bitSize, iData, iBitInData int, isExported bool) (int, int) {
-	var val uint64
+func parseValue(
+	data []byte,
+	bitSize, iData, iBitInData int,
+	byteOrder ByteOrder,
+) (val uint64, nextIData, nextIBitInData int) {
+	if byteOrder == LittleEndian {
+		return parseValueLittleEndian(data, bitSize, iData, iBitInData)
+	} else {
+		return parseValueBigEndian(data, bitSize, iData, iBitInData)
+	}
+}
+
+func parseValueLittleEndian(
+	data []byte,
+	bitSize, iData, iBitInData int,
+) (val uint64, nextIData, nextIBitInData int) {
 	i := 0
 	for i < bitSize && iData < len(data) {
 		d := uint64(data[iData])
@@ -63,19 +87,15 @@ func setValueToBitFieldLittleEndian(vf *reflect.Value, data []byte, bitSize, iDa
 			iBitInData = 0
 		}
 	}
-	if isExported {
-		if vf.CanUint() {
-			vf.SetUint(val)
-		} else if vf.CanInt() {
-			vf.SetInt(signed(val, bitSize))
-		}
-	}
-	return iData, iBitInData
+	nextIData = iData
+	nextIBitInData = iBitInData
+	return val, nextIData, nextIBitInData
 }
 
-func setValueToBitFieldBigEndian(vf *reflect.Value, data []byte, bitSize, iData, iBitInData int, isExported bool) (int, int) {
-	var val uint64
-
+func parseValueBigEndian(
+	data []byte,
+	bitSize, iData, iBitInData int,
+) (val uint64, nextIData, nextIBitInData int) {
 	for consumedBits := 0; consumedBits < bitSize && iData < len(data); {
 		remainedBitInThisByte := 8 - iBitInData
 		var wantBitInThisByte int
@@ -95,22 +115,9 @@ func setValueToBitFieldBigEndian(vf *reflect.Value, data []byte, bitSize, iData,
 			iBitInData = 0
 		}
 	}
-	if isExported {
-		if vf.CanUint() {
-			vf.SetUint(val)
-		} else if vf.CanInt() {
-			vf.SetInt(signed(val, bitSize))
-		}
-	}
-	return iData, iBitInData
-}
-
-func setValueToBitField(vf *reflect.Value, data []byte, bitSize, iData, iBitInData int, isExported bool, options options) (int, int) {
-	if options.byteOrder == LittleEndian {
-		return setValueToBitFieldLittleEndian(vf, data, bitSize, iData, iBitInData, isExported)
-	} else {
-		return setValueToBitFieldBigEndian(vf, data, bitSize, iData, iBitInData, isExported)
-	}
+	nextIData = iData
+	nextIBitInData = iBitInData
+	return val, nextIData, nextIBitInData
 }
 
 /**
@@ -121,31 +128,6 @@ func signed(val uint64, bitSize int) int64 {
 	msb := val >> (bitSize - 1)
 	pattern := (0 - msb) << bitSize
 	return int64(val | pattern)
-}
-
-func setValueToIntegerField(vf *reflect.Value, data []byte, options options) {
-	var byteOrder binary.ByteOrder = binary.LittleEndian
-	if options.byteOrder == BigEndian {
-		byteOrder = binary.BigEndian
-	}
-	switch vf.Kind() {
-	case reflect.Uint8:
-		vf.SetUint(uint64(data[0]))
-	case reflect.Uint16:
-		vf.SetUint(uint64(byteOrder.Uint16(data)))
-	case reflect.Uint32:
-		vf.SetUint(uint64(byteOrder.Uint32(data)))
-	case reflect.Uint64:
-		vf.SetUint(byteOrder.Uint64(data))
-	case reflect.Int8:
-		vf.SetInt(int64(int8(data[0])))
-	case reflect.Int16:
-		vf.SetInt(int64(int16(byteOrder.Uint16(data))))
-	case reflect.Int32:
-		vf.SetInt(int64(int32(byteOrder.Uint32(data))))
-	case reflect.Int64:
-		vf.SetInt(int64(byteOrder.Uint64(data)))
-	}
 }
 
 func isFixedInteger(kind reflect.Kind) bool {
