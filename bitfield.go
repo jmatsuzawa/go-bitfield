@@ -35,7 +35,7 @@ func unmarshal(data []byte, out any, options options) {
 		if tag, ok := rt.Field(iField).Tag.Lookup("bit"); ok {
 			// Already checked error
 			bitSize, _ := strconv.Atoi(tag)
-			iData, iBitInData = setValueToBitField(&vf, data, bitSize, iData, iBitInData, rt.Field(iField).IsExported())
+			iData, iBitInData = setValueToBitField(&vf, data, bitSize, iData, iBitInData, rt.Field(iField).IsExported(), options)
 		} else if isFixedInteger(vf.Kind()) {
 			// If the previous field is not fully read, the next plain integer field should be read from the next byte
 			if iBitInData > 0 {
@@ -50,7 +50,7 @@ func unmarshal(data []byte, out any, options options) {
 	}
 }
 
-func setValueToBitField(vf *reflect.Value, data []byte, bitSize, iData, iBitInData int, isExported bool) (int, int) {
+func setValueToBitFieldLittleEndian(vf *reflect.Value, data []byte, bitSize, iData, iBitInData int, isExported bool) (int, int) {
 	var val uint64
 	i := 0
 	for i < bitSize && iData < len(data) {
@@ -71,6 +71,46 @@ func setValueToBitField(vf *reflect.Value, data []byte, bitSize, iData, iBitInDa
 		}
 	}
 	return iData, iBitInData
+}
+
+func setValueToBitFieldBigEndian(vf *reflect.Value, data []byte, bitSize, iData, iBitInData int, isExported bool) (int, int) {
+	var val uint64
+
+	for consumedBits := 0; consumedBits < bitSize && iData < len(data); {
+		remainedBitInThisByte := 8 - iBitInData
+		var wantBitInThisByte int
+		if (bitSize - consumedBits) < remainedBitInThisByte {
+			wantBitInThisByte = bitSize - consumedBits
+		} else {
+			wantBitInThisByte = remainedBitInThisByte
+		}
+
+		var mask byte = 0xff >> (8 - wantBitInThisByte)
+		var b byte = data[iData] >> iBitInData
+		consumedBits += wantBitInThisByte
+		val = (val << wantBitInThisByte) | uint64(b&mask)
+		iBitInData += wantBitInThisByte
+		if iBitInData >= 8 {
+			iData++
+			iBitInData = 0
+		}
+	}
+	if isExported {
+		if vf.CanUint() {
+			vf.SetUint(val)
+		} else if vf.CanInt() {
+			vf.SetInt(signed(val, bitSize))
+		}
+	}
+	return iData, iBitInData
+}
+
+func setValueToBitField(vf *reflect.Value, data []byte, bitSize, iData, iBitInData int, isExported bool, options options) (int, int) {
+	if options.byteOrder == LittleEndian {
+		return setValueToBitFieldLittleEndian(vf, data, bitSize, iData, iBitInData, isExported)
+	} else {
+		return setValueToBitFieldBigEndian(vf, data, bitSize, iData, iBitInData, isExported)
+	}
 }
 
 /**
