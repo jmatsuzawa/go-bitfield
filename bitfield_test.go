@@ -111,7 +111,7 @@ func TestUnmarshal_notExported(t *testing.T) {
 	assert.Equal(t, want, got)
 }
 
-func TestUnmarshalByteOrder(t *testing.T) {
+func TestUnmarshal_ByteOrder(t *testing.T) {
 	// Setup
 	type a struct{ A uint32 }
 	testCases := map[string]struct {
@@ -219,4 +219,150 @@ func TestUnmarshalError(t *testing.T) {
 			assert.ErrorAs(t, err, &typeError)
 		})
 	}
+}
+
+func TestUnmarshal_BigEndian_PartOfIPv6Header(t *testing.T) {
+	// Setup
+	type a struct {
+		Version      uint8  `bit:"4"`
+		TrafficClass uint8  `bit:"8"`
+		FlowLabel    uint32 `bit:"20"`
+	}
+	inputData := []byte{0x06, 0x90, 0x95, 0xC4}
+	want := a{Version: 6, TrafficClass: 0, FlowLabel: 0x995C4}
+
+	// Exercise
+	var got a
+	err := Unmarshal(inputData, &got, WithByteOrder(BigEndian))
+
+	// Verify
+	assert.Nil(t, err)
+	assert.Equal(t, want, got)
+}
+
+func TestUnmarshal_BigEndian_1byteFull(t *testing.T) {
+	// Setup
+	type a struct {
+		A uint8 `bit:"8"`
+	}
+	inputData := []byte{0x5A}
+	want := a{A: 0x5A}
+
+	// Exercise
+	var got a
+	err := Unmarshal(inputData, &got, WithByteOrder(BigEndian))
+
+	// Verify
+	assert.Nil(t, err)
+	assert.Equal(t, want, got)
+}
+
+func TestUnmarshal_BigEndian_1byteFirstPart(t *testing.T) {
+	// Setup
+	type a struct {
+		A uint8 `bit:"5"`
+	}
+	inputData := []byte{0x5A}
+	want := a{A: 0x1A}
+
+	// Exercise
+	var got a
+	err := Unmarshal(inputData, &got, WithByteOrder(BigEndian))
+
+	// Verify
+	assert.Nil(t, err)
+	assert.Equal(t, want, got)
+}
+
+func TestUnmarshal_BigEndian1byte_LastPart(t *testing.T) {
+	// Setup
+	type a struct {
+		_ uint8 `bit:"1"`
+		A uint8 `bit:"7"`
+	}
+	inputData := []byte{0x5A}
+	want := a{A: 0x2D}
+
+	// Exercise
+	var got a
+	err := Unmarshal(inputData, &got, WithByteOrder(BigEndian))
+
+	// Verify
+	assert.Nil(t, err)
+	assert.Equal(t, want, got)
+}
+
+func TestUnmarshal_BigEndian_1byteCenterPart(t *testing.T) {
+	// Setup
+	type a struct {
+		_ uint8 `bit:"3"`
+		A uint8 `bit:"2"`
+		_ uint8 `bit:"3"`
+	}
+	inputData := []byte{0x5A}
+	want := a{A: 3}
+
+	// Exercise
+	var got a
+	err := Unmarshal(inputData, &got, WithByteOrder(BigEndian))
+
+	// Verify
+	assert.Nil(t, err)
+	assert.Equal(t, want, got)
+}
+
+func TestUnmarshal_BigEndian_4byte_Full(t *testing.T) {
+	// Setup
+	type a struct {
+		A uint32 `bit:"32"`
+	}
+	inputData := []byte{0x5A, 0xA5, 0x5A, 0xA5}
+	want := a{A: 0x5AA55AA5}
+
+	// Exercise
+	var got a
+	err := Unmarshal(inputData, &got, WithByteOrder(BigEndian))
+
+	// Verify
+	assert.Nil(t, err)
+	assert.Equal(t, want, got)
+}
+
+func TestUnmarshal_BigEndian_4byte_Composite(t *testing.T) {
+	// Setup
+	type a struct {
+		A uint8  `bit:"3"`
+		B uint32 `bit:"18"`
+		C uint8  `bit:"3"`
+		D uint8
+	}
+	inputData := []byte{0x5A, 0xA5, 0x5A, 0xA5}
+	want := a{A: 0x2, B: 0x174BA, C: 0x2, D: 0xA5}
+
+	// Exercise
+	var got a
+	err := Unmarshal(inputData, &got, WithByteOrder(BigEndian))
+
+	// Verify
+	assert.Nil(t, err)
+	assert.Equal(t, want, got)
+}
+
+func TestUnmarshal_BigEndian2byte_split(t *testing.T) {
+	// Setup
+	type a struct {
+		_ uint8 `bit:"4"`
+		A uint8 `bit:"8"`
+		_ uint8 `bit:"4"`
+	}
+	inputData := []byte{0x5A, 0xA5}
+	want := a{A: 0x55}
+
+	// Exercise
+	var got a
+	err := Unmarshal(inputData, &got, WithByteOrder(BigEndian))
+
+	// Verify
+	assert.Nil(t, err)
+	assert.Equal(t, want, got)
 }
