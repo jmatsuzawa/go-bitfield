@@ -4,7 +4,7 @@ import (
 	"reflect"
 )
 
-// An TypeError describes an invalid type passed to [Unmarshal].
+// TypeError describes an invalid type passed to [Unmarshal].
 // (The argument to [Unmarshal] must be a non-nil pointer to a struct.)
 type TypeError struct {
 	Type    reflect.Type
@@ -15,6 +15,7 @@ func (e *TypeError) Error() string {
 	return "bitfield: " + e.problem
 }
 
+// FieldError describes an invalid bit-field in a struct passed to [Unmarshal].
 type FieldError struct {
 	Field   reflect.StructField
 	problem string

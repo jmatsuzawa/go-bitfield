@@ -5,14 +5,85 @@ import (
 	"strconv"
 )
 
-// Unmarshal decodes the byte slice data and stores the result in a struct with bit-fields pointed by out.
+// Unmarshal parses a byte slice and stores the result in a struct with bit-fields pointed by out.
 //
-// The bit size of bit-fields of a struct is specified by a struct tag "bit". See the following example code
-// The bit size must be within the range 1 to the size of the field type. For example, uint8 A `bit:"9"` is not acceptable, which causes FieldError.
+// The following is a simple example:
 //
-// You can define both plain integer fields without a bit tag and bit-fields with a bit tag in a struct. Fields of not-integer types are ignored by Unmarshal.
+//	// Bit-fields definitions
+//	type bitFields struct {
+//	    // List fields from least significant bit
+//	    A uint8 `bit:"1"`
+//	    B uint8 `bit:"2"`
+//	    _ uint8 `bit:"1"` // For place holder
+//	    C uint8 `bit:"4"`
+//	}
 //
-// If out is not a non-nil pointer to a struct, Unmarshal returns a TypeError.
+//	// Byte slice to parse and decode
+//	input := []byte{0b1010_0_10_1} // 0xA5
+//
+//	// Variable of the bit-fields to store the result of decoding
+//	var out bitFields
+//
+//	_ = bitfield.Unmarshal(input, &out)
+//
+//	fmt.Printf("A=%#b, B=%#b, C=%#b\n", out.A, out.B, out.C)
+//	// Output: A=0b1, B=0b10, C=0b1010
+//
+// Bit-fields can be declared with a struct tag "bit" as in the above example. The constant number following `bit:` represents the bit size of the field. The bit size must be within the range of 1 to the size of the underlying integer type. For example, uint8 A `bit:"9"` is not acceptable, which causes [FieldError] to be returned. Fields must be listed in order, starting from the least significant bit.
+//
+// This library borrows the idea of bit-fields from the C language. The function [Unmarshal] is aimed to make it easy to create an instance of a struct with bit-fields from a byte slice in a declarative way, just like type casting of a byte array into a struct pointer in C. However, there are some differences between this package and C language:
+//
+//   - Bit-fields are not C-like packed bit-fields. Their actual size is the same as the size of their underlying type. For example, Field uint8 `bit:"4"` occupies 8 bits (not 4 bits) in a struct. The bit tag is used to specify the bit position to parse in the provided byte slice. Bit-fields does not reduce memory usage. Data packing is not the purpose of this package.
+//
+// [Unmarshal] parses multi-byte data in LittleEndian by default. You can change the byte order by specifying [WithByteOrder] option. Example:
+//
+//	var out struct {
+//		A uint8  `bit:"4"`
+//		B uint8  `bit:"8"`
+//		C uint32 `bit:"20"`
+//	}
+//	data := []byte{0x06, 0x90, 0x95, 0xC4}
+//	_ = bitfield.Unmarshal(data, &out, bitfield.WithByteOrder(bitfield.BigEndian))
+//	fmt.Printf("A=%d, B=%d, C=%#x\n", out.A, out.B, out.C)
+//	// Output: "A=6, B=0, C=0x995c4"
+//
+// The provided struct can also have plain integer fields without a bit tag. If an integer field does not have a bit tag, the bit size of the field will be the size of the type. The difference between bit-fields and plain integer fields is that bit-fields parse from the bit following the last parsed bit, while plain integer fields always parse from the LSB of the next byte. The following example code demonstrates the difference:
+//
+//	type withBitTag struct {
+//		A uint8  `bit:"4"`
+//		B uint8  `bit:"8"`
+//	}
+//	var out withBitTag
+//	data := []byte{0x55, 0xaa}
+//	_ = bitfield.Unmarshal(data, &out)
+//	fmt.Printf("A=%#x, B=%#x\n", out.A, out.B)
+//	// Output: "A=0x5, B=0xa5"
+//
+//	type withoutBitTag struct {
+//		A uint8  `bit:"4"`
+//		B uint8
+//	}
+//	var out withoutBitTag
+//	data := []byte{0x55, 0xaa}
+//	_ = bitfield.Unmarshal(data, &out)
+//	fmt.Printf("A=%#x, B=%#x\n", out.A, out.B)
+//	// Output: "A=0x5, B=0xaa"
+//
+// If out is not a non-nil pointer to a struct, Unmarshal returns [TypeError].
+//
+// opts is a variadic parameter to specify how to parse the byte slice. Currently, only [WithByteOrder] option is available to specify the byte order for multi-byte fields.
+//
+// Paramters:
+//
+//   - data: A byte slice to parse
+//   - out: A non-nil pointer to a struct with bit-fields which stores the result of parsing
+//   - opts: Options to specify how to parse the byte slice
+//
+// Returns:
+//
+//   - nil if the byte slice is successfully parsed and stored in the struct
+//   - [FieldError] if the struct pointed by out has an invalid bit-field
+//   - [TypeError] if out is not a non-nil pointer to a struct
 func Unmarshal(data []byte, out any, opts ...Option) error {
 	if err := validateUnmarshalType(out); err != nil {
 		return err
