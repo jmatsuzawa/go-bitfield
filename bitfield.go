@@ -5,7 +5,8 @@ import (
 	"strconv"
 )
 
-// Unmarshal parses a byte slice and stores the result in a struct with bit-fields pointed by out.
+// Unmarshal parses a byte slice and stores the result in a struct with
+// bit-fields pointed by out.
 //
 // The following is a simple example:
 //
@@ -29,13 +30,28 @@ import (
 //	fmt.Printf("A=%#b, B=%#b, C=%#b\n", out.A, out.B, out.C)
 //	// Output: A=0b1, B=0b10, C=0b1010
 //
-// Bit-fields can be declared with a struct tag "bit" as in the above example. The constant number following `bit:` represents the bit size of the field. The bit size must be within the range of 1 to the size of the underlying integer type. For example, uint8 A `bit:"9"` is not acceptable, which causes [FieldError] to be returned. Fields must be listed in order, starting from the least significant bit.
+// Bit-fields can be declared with a struct tag "bit" as in the above example.
+// The constant number following `bit:` represents the bit size of the field.
+// The bit size must be within the range of 1 to the size of the underlying
+// integer type. For example, uint8 A `bit:"9"` is not acceptable, which causes
+// [FieldError] to be returned. Fields must be listed in order, starting from
+// the least significant bit.
 //
-// This library borrows the idea of bit-fields from the C language. The function [Unmarshal] is aimed to make it easy to create an instance of a struct with bit-fields from a byte slice in a declarative way, just like type casting of a byte array into a struct pointer in C. However, there are some differences between this package and C language:
+// This library borrows the idea of bit-fields from the C language. The
+// function [Unmarshal] is aimed to make it easy to create an instance of a
+// struct with bit-fields from a byte slice in a declarative way, just like
+// type casting of a byte array into a struct pointer in C. However, there
+// are some differences between this package and C language:
 //
-//   - Bit-fields are not C-like packed bit-fields. Their actual size is the same as the size of their underlying type. For example, Field uint8 `bit:"4"` occupies 8 bits (not 4 bits) in a struct. The bit tag is used to specify the bit position to parse in the provided byte slice. Bit-fields does not reduce memory usage. Data packing is not the purpose of this package.
+//   - Bit-fields are not C-like packed bit-fields. Their actual size is the
 //
-// [Unmarshal] parses multi-byte data in LittleEndian by default. You can change the byte order by specifying [WithByteOrder] option. Example:
+// same as the size of their underlying type. For example, Field uint8 `bit:"4"`
+// occupies 8 bits (not 4 bits) in a struct. The bit tag is used to specify the
+// bit position to parse in the provided byte slice. Bit-fields does not reduce
+// memory usage. Data packing is not the purpose of this package.
+//
+// [Unmarshal] parses multi-byte data in LittleEndian by default. You can change
+// the byte order by specifying [WithByteOrder] option. Example:
 //
 //	var out struct {
 //		A uint8  `bit:"4"`
@@ -47,7 +63,12 @@ import (
 //	fmt.Printf("A=%d, B=%d, C=%#x\n", out.A, out.B, out.C)
 //	// Output: "A=6, B=0, C=0x995c4"
 //
-// The provided struct can also have plain integer fields without a bit tag. If an integer field does not have a bit tag, the bit size of the field will be the size of the type. The difference between bit-fields and plain integer fields is that bit-fields parse from the bit following the last parsed bit, while plain integer fields always parse from the LSB of the next byte. The following example code demonstrates the difference:
+// The provided struct can also have plain integer fields without a bit tag. If
+// an integer field does not have a bit tag, the bit size of the field will be
+// the size of the type. The difference between bit-fields and plain integer
+// fields is that bit-fields parse from the bit following the last parsed bit,
+// while plain integer fields always parse from the LSB of the next byte. The
+// following example code demonstrates the difference:
 //
 //	type withBitTag struct {
 //		A uint8  `bit:"4"`
@@ -71,12 +92,15 @@ import (
 //
 // If out is not a non-nil pointer to a struct, Unmarshal returns [TypeError].
 //
-// opts is a variadic parameter to specify how to parse the byte slice. Currently, only [WithByteOrder] option is available to specify the byte order for multi-byte fields.
+// opts is a variadic parameter to specify how to parse the byte slice.
+// Currently, only [WithByteOrder] option is available to specify the byte
+// order for multi-byte fields.
 //
 // Paramters:
 //
 //   - data: A byte slice to parse
-//   - out: A non-nil pointer to a struct with bit-fields which stores the result of parsing
+//   - out: A non-nil pointer to a struct with bit-fields which stores the
+//     result of parsing
 //   - opts: Options to specify how to parse the byte slice
 //
 // Returns:
@@ -109,7 +133,8 @@ func unmarshal(data []byte, out any, options options) {
 			bitSize, _ = strconv.Atoi(tag)
 		} else if isFixedInteger(rt.Field(iField).Type.Kind()) {
 			bitSize = rt.Field(iField).Type.Bits()
-			// If the previous field is not fully read, the next plain integer field should be read from the next byte
+			// If the previous field is not fully read, the next plain integer
+			// field should be read from the next byte
 			if iBitInData > 0 {
 				iData++
 				iBitInData = 0
